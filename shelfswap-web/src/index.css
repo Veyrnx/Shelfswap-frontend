@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-bg font-sans text-[15px] leading-relaxed text-ink antialiased;
+}
+
+/* คลาสที่ใช้ซ้ำทั้งเว็บ (มินิมอล: ไม่มีเงา ปุ่มทรงแคปซูล ช่องกรอกแบบเส้นใต้) */
+@layer components {
+  .btn { @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-primary text-bg hover:bg-[#145754]; }
+  .btn-outline { @apply btn border border-field bg-transparent text-ink hover:bg-surface; }
+  .btn-danger { @apply btn bg-coral text-coral-ink hover:bg-[#E3898A]; }
+  .btn-sm { @apply min-h-[36px] px-4 py-1.5; }
+
+  /* ช่องกรอกแบบเส้นใต้ */
+  .input { @apply w-full rounded-none border-0 border-b border-field bg-transparent px-0 py-2 text-[15px] text-ink outline-none placeholder:text-muted/70 focus:border-ink focus:ring-0; }
+  /* textarea / select ที่ต้องเป็นกล่อง */
+  .input-box { @apply w-full rounded-lg border border-field bg-bg px-3 py-2 text-[15px] text-ink outline-none focus:border-ink; }
+  .label { @apply mb-1 block text-xs font-medium tracking-wider text-muted; }
+  .eyebrow { @apply text-xs tracking-[0.12em] text-muted; }
+
+  /* ปุ่มเม็ดยา เช่น ตัวกรองสภาพสินค้า */
+  .pill { @apply inline-flex min-h-[36px] items-center rounded-full border border-field px-4 text-sm text-ink transition hover:bg-surface; }
+  .pill-active { @apply border-accent bg-accent text-primary hover:bg-accent; }
+
+  /* กล่องแบบบาง ไม่มีเงา ใช้ในแดชบอร์ด/หลังบ้าน */
+  .card { @apply rounded-lg border border-line bg-bg; }
+  .heading { @apply font-serif font-medium; }
+  .alert-error { @apply rounded-lg bg-coral-soft px-3 py-2 text-sm text-coral-text; }
+}
