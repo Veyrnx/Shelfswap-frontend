@@ -1,5 +1,0 @@
-.env
-.jwt_secret
-/shelfswap
-/app
-*.exe
