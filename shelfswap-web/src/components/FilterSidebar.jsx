@@ -19,6 +19,14 @@ function FilterSidebar({ categories = [], value = EMPTY, onChange }) {
   useEffect(() => setDraft({ ...EMPTY, ...JSON.parse(valueKey) }), [valueKey]);
 
   const set = (field) => (e) => setDraft((d) => ({ ...d, [field]: e.target.value }));
+  function changeCategory(e) {
+  const category = e.target.value;
+
+  setDraft((d) => ({ ...d, category }));
+  setError('');
+
+  onChange({ category });
+}
   const total = categories.reduce((n, c) => n + c.listingCount, 0);
 
   function apply(e) {
@@ -51,7 +59,7 @@ function FilterSidebar({ categories = [], value = EMPTY, onChange }) {
                 key={c.id}
                 className={`flex cursor-pointer justify-between gap-3 rounded py-1 transition hover:text-hover ${checked ? 'font-semibold text-ink' : 'text-muted'}`}
               >
-                <input type="radio" name="category" value={String(c.id)} checked={checked} onChange={set('category')} className="sr-only" />
+                <input type="radio" name="category" value={String(c.id)} checked={checked} onChange={changeCategory} className="sr-only" />
                 <span>{c.name}</span>
                 <span className="text-muted">{c.listingCount}</span>
               </label>
