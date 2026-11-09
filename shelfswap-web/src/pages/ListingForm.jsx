@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createListing, getCategories, getListing, updateListing } from '../api/listings';
+import { createListing, getCategories, getListing, updateListing, uploadImage } from '../api/listings';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { ErrorState, RowsSkeleton } from '../components/ui/States';
@@ -23,6 +23,9 @@ function ListingForm() {
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
 
   useEffect(() => {
     const jobs = [getCategories().then((d) => setCategories(d.items))];
@@ -48,24 +51,93 @@ function ListingForm() {
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError('รองรับเฉพาะไฟล์ JPG, PNG และ WEBP');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('รูปภาพต้องมีขนาดไม่เกิน 5 MB');
+      e.target.value = '';
+      return;
+    }
+
+    setError('');
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+
+
   async function submit(e) {
     e.preventDefault();
-    if (form.title.trim().length < 3) return setError('ชื่อสินค้าต้องยาวอย่างน้อย 3 ตัวอักษร');
-    if (form.price === '' || Number(form.price) < 0) return setError('กรุณาใส่ราคา (0 = ให้ฟรี)');
-    if (!form.categoryId) return setError('กรุณาเลือกหมวดหมู่');
+
+    if (busy) return;
+
+    if (form.title.trim().length < 3) {
+      return setError('ชื่อสินค้าต้องยาวอย่างน้อย 3 ตัวอักษร');
+    }
+
+    if (form.price === '' || Number(form.price) < 0) {
+      return setError('กรุณาใส่ราคา (0 = ให้ฟรี)');
+    }
+
+    if (!form.categoryId) {
+      return setError('กรุณาเลือกหมวดหมู่');
+    }
+
     setError('');
     setBusy(true);
-    // ส่งตัวเลขเป็น number ไม่ใช่ string (Go struct รับ int ถ้าส่ง "450" จะ decode ไม่ผ่าน)
-    const input = { ...form, title: form.title.trim(), price: Number(form.price), categoryId: Number(form.categoryId) };
+
+    const input = {
+      ...form,
+      title: form.title.trim(),
+      price: Number(form.price),
+      categoryId: Number(form.categoryId),
+    };
+
     try {
-      const saved = isEdit ? await updateListing(token, id, input) : await createListing(token, input);
-      toast.success(saved.status === 'pending' ? 'บันทึกแล้ว รอผู้ดูแลอนุมัติก่อนขึ้นหน้าร้าน' : 'บันทึกการแก้ไขแล้ว');
+      // ถ้าผู้ใช้เลือกรูปใหม่ ให้อัปโหลดรูปก่อน
+      if (imageFile) {
+        setUploading(true);
+
+        const result = await uploadImage(token, imageFile);
+
+        if (!result?.url) {
+          throw new Error('อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่');
+        }
+
+        input.imageUrl = result.url;
+        setUploading(false);
+      }
+
+      // บันทึกประกาศด้วย API เดิม
+      const saved = isEdit
+        ? await updateListing(token, id, input)
+        : await createListing(token, input);
+
+      toast.success(
+        saved.status === 'pending'
+          ? 'บันทึกแล้ว รอผู้ดูแลอนุมัติก่อนขึ้นหน้าร้าน'
+          : 'บันทึกการแก้ไขแล้ว'
+      );
+
       navigate(`/listings/${saved.id}`);
+
     } catch (err) {
       setError(err.message);
       setBusy(false);
+      setUploading(false);
     }
   }
+
 
   if (loading) return <div className="mx-auto max-w-2xl px-4 py-8"><RowsSkeleton rows={5} /></div>;
   if (loadError) return <div className="mx-auto max-w-2xl px-4 py-8"><ErrorState message={loadError} /></div>;
@@ -110,14 +182,40 @@ function ListingForm() {
           </div>
         </fieldset>
 
+
         <div>
-          <label htmlFor="imageUrl" className="label">ลิงก์รูปสินค้า</label>
-          <input id="imageUrl" type="url" value={form.imageUrl} onChange={set('imageUrl')} className="input" placeholder="https://..." />
-          <p className="mt-1 text-xs text-muted">ตอนนี้ใช้ลิงก์รูปไปก่อน (อัปโหลดรูปเป็นงานเสริมถ้าเวลาพอ)</p>
-          {form.imageUrl && (
-            <ProductImage key={form.imageUrl} src={form.imageUrl} alt="ตัวอย่างรูป" className="mt-3 h-40 w-32" />
+          <label htmlFor="imageFile" className="label">
+            รูปภาพสินค้า
+          </label>
+
+          <input
+            id="imageFile"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageChange}
+            className="input"
+          />
+
+          <p className="mt-1 text-xs text-muted">
+            รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 5 MB
+          </p>
+
+          {(imagePreview || form.imageUrl) && (
+            <ProductImage
+              key={imagePreview || form.imageUrl}
+              src={imagePreview || form.imageUrl}
+              alt="ตัวอย่างรูปสินค้า"
+              className="mt-3 h-40 w-32"
+            />
+          )}
+
+          {imageFile && (
+            <p className="mt-2 text-xs text-muted">
+              ไฟล์ที่เลือก: {imageFile.name}
+            </p>
           )}
         </div>
+
 
         <div>
           <label htmlFor="description" className="label">รายละเอียด</label>
@@ -129,7 +227,17 @@ function ListingForm() {
 
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => navigate(-1)} className="btn-outline">ยกเลิก</button>
-          <button disabled={busy} className="btn-primary">{busy ? 'กำลังบันทึก...' : isEdit ? 'บันทึกการแก้ไข' : 'ลงประกาศ'}</button>
+
+          <button disabled={busy} className="btn-primary">
+            {uploading
+              ? 'กำลังอัปโหลดรูป...'
+              : busy
+                ? 'กำลังบันทึก...'
+                : isEdit
+                  ? 'บันทึกการแก้ไข'
+                  : 'ลงประกาศ'}
+          </button>
+
         </div>
       </form>
     </div>

@@ -27,3 +27,15 @@ export const markSold = (token, id) =>
   apiFetch(`/api/listings/${id}/sold`, { method: 'POST', token });
 
 export const myListings = (token) => apiFetch('/api/me/listings', { token });
+
+
+export const uploadImage = (token, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiFetch('/api/uploads', {
+    method: 'POST',
+    token,
+    body: formData,
+  });
+};

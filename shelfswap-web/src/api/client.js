@@ -7,16 +7,27 @@ const BASE = process.env.REACT_APP_API_URL || '';
 export const SESSION_EXPIRED = 'shelfswap:session-expired';
 
 export async function apiFetch(path, { method = 'GET', body, token } = {}) {
+
   const headers = {};
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const isFormData = body instanceof FormData;
+
+  if (body !== undefined && !isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   if (token) headers.Authorization = `Bearer ${token}`;
+
 
   let res;
   try {
     res = await fetch(BASE + path, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+
+      body: body !== undefined
+        ? (isFormData ? body : JSON.stringify(body))
+        : undefined,
+
     });
   } catch {
     // fetch โยน error เฉพาะตอนต่อไม่ได้เลย (server หลับ / CORS ไม่ผ่าน / เน็ตหลุด)
